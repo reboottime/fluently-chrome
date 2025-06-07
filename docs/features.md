@@ -1,6 +1,8 @@
 # Features
 
-- support user provides his own API Key from LLM providers
+- support user provides
+  - his own API Key from LLM providers
+  - his own prompt on correcting grammar
 - grammar correction feedback
   - original
   - polished version
