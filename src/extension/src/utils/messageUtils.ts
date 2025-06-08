@@ -12,7 +12,6 @@ interface MessageData extends Record<string, any> { }
  */
 interface VoiceMessage {
     sessionId: string;
-    container: HTMLElement;
     textContent: string;
     index: number;
     speaker?: string;

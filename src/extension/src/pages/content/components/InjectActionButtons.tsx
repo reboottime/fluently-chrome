@@ -1,5 +1,9 @@
-import MessageUtils, { VoiceMessage } from "@src/utils/messageUtils";
+import MessageUtils, { VoiceMessage as IVoiceMessage } from "@src/utils/messageUtils";
 import React, { useCallback, useEffect } from "react";
+
+interface VoiceMessage extends IVoiceMessage {
+  container: HTMLElement
+}
 
 // Constants
 const SELECTORS = {
@@ -222,7 +226,6 @@ const InjectActionButtons: React.FC = () => {
     const sessionId = sessionIdMatch ? sessionIdMatch[1] : "";
 
     const textElements = document.querySelectorAll(SELECTORS.TEXT_ELEMENTS);
-    console.log("Found text elements:", textElements.length);
 
     const messages: VoiceMessage[] = [];
 
@@ -244,8 +247,8 @@ const InjectActionButtons: React.FC = () => {
         container.querySelector(SELECTORS.DURATION)?.textContent || "";
 
       messages.push({
-        sessionId,
         container,
+        sessionId,
         textContent,
         index,
         speaker,
@@ -301,7 +304,8 @@ const InjectActionButtons: React.FC = () => {
 
         await MessageUtils.requestOpenPanel();
         setTimeout(async () => {
-          await MessageUtils.sendVoiceMessage(message);
+          const { container, ...voiceMessage } = message;
+          await MessageUtils.sendVoiceMessage(voiceMessage);
         }, DELAYS.LOADING);
 
         setTimeout(() => {
