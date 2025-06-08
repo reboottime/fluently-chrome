@@ -13,15 +13,15 @@
     }
   },
   "side_panel": {
-    "default_path": "src/pages/sidepanel/index.html"
+    "default_path": "src/pages/panel/index.html"
   },
   "chrome_url_overrides": {
     "newtab": "src/pages/newtab/index.html"
   },
-  "icons": [{
+  "icons": {
     "32": "icon-32.png",
     "128": "icon-128.png"
-  }],
+  },
   "permissions": [
     "storage",
     "sidePanel",
@@ -31,7 +31,8 @@
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",
     "https://api.cohere.ai/*",
-    "https://api.together.xyz/*"
+    "https://api.together.xyz/*",
+    "*://*.getfluently.app/*"
   ],
   "background": {
     "service_worker": "src/pages/background/index.js"
@@ -59,7 +60,9 @@
         "icon-128.png",
         "icon-32.png"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
