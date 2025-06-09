@@ -47,7 +47,7 @@ export default function Panel() {
   return (
     <div className="container">
       <div className="panel">
-        <h2 className="panel-heading">
+        <h2 className="panel-heading text-red-500">
           Current Message #{voiceMessage.index}
         </h2>
         
