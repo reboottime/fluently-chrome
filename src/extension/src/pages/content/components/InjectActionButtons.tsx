@@ -1,5 +1,9 @@
-import MessageUtils, { VoiceMessage } from "@src/utils/messageUtils";
 import React, { useCallback, useEffect } from "react";
+import MessageUtils from "@utils/messageUtils";
+
+interface VoiceMessageItem extends VoiceMessage {
+  container: HTMLElement
+}
 
 // Constants
 const SELECTORS = {
@@ -215,16 +219,15 @@ const InjectActionButtons: React.FC = () => {
     [],
   );
 
-  const extractVoiceMessages = useCallback((): VoiceMessage[] => {
+  const extractVoiceMessages = useCallback((): VoiceMessageItem[] => {
     const sessionIdMatch = window.location.href.match(
       /\/session\/([a-f0-9\-]{36})/,
     );
     const sessionId = sessionIdMatch ? sessionIdMatch[1] : "";
 
     const textElements = document.querySelectorAll(SELECTORS.TEXT_ELEMENTS);
-    console.log("Found text elements:", textElements.length);
 
-    const messages: VoiceMessage[] = [];
+    const messages: VoiceMessageItem[] = [];
 
     textElements.forEach((textElement, index) => {
       const container = textElement.closest(SELECTORS.CONTAINER) as HTMLElement;
@@ -244,8 +247,8 @@ const InjectActionButtons: React.FC = () => {
         container.querySelector(SELECTORS.DURATION)?.textContent || "";
 
       messages.push({
-        sessionId,
         container,
+        sessionId,
         textContent,
         index,
         speaker,
@@ -291,7 +294,6 @@ const InjectActionButtons: React.FC = () => {
   const createAddNoteButton = useCallback(
     (message: VoiceMessage): HTMLButtonElement => {
       const handleAddNoteClick = async (e: Event): Promise<void> => {
-        e.stopPropagation();
 
         const button = e.currentTarget as HTMLButtonElement;
         const originalHTML = button.innerHTML;
@@ -321,7 +323,7 @@ const InjectActionButtons: React.FC = () => {
   );
 
   const createActionButtons = useCallback(
-    (message: VoiceMessage): void => {
+    (message: VoiceMessageItem): void => {
       // Skip if buttons already exist
       if (message.container.querySelector(SELECTORS.EXISTING_BUTTONS)) return;
 
@@ -332,8 +334,10 @@ const InjectActionButtons: React.FC = () => {
         parseStyleString(BUTTON_STYLES.CONTAINER),
       );
 
+      const { container, ...voiceMessage } = message;
+
       const copyButton = createCopyButton(message);
-      const addNoteButton = createAddNoteButton(message);
+      const addNoteButton = createAddNoteButton(voiceMessage);
 
       buttonContainer.appendChild(copyButton);
       buttonContainer.appendChild(addNoteButton);
