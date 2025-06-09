@@ -1,5 +1,7 @@
 # Chrome Extension Backend Server Documentation
 
+The server is built on top of [nest.js](https://nestjs.com/).
+
 ## Overview
 
 Backend API for Chrome extension that processes voice transcripts and stores learning notes. The frontend handles LLM integration directly, while the backend manages data persistence.
