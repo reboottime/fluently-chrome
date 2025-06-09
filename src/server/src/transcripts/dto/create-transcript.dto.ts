@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+} from 'class-validator';
 
 export class CreateTranscriptDto {
   @IsString()
@@ -11,11 +17,19 @@ export class CreateTranscriptDto {
 
   @IsString()
   @IsNotEmpty()
-  originalContent: string;
+  textContent: string;
+
+  @IsString()
+  @IsOptional()
+  speaker?: string;
+
+  @IsString()
+  @IsOptional()
+  duration?: string;
 
   @IsString()
   @IsNotEmpty()
-  improvedMessage: string;
+  suggestedContent: string;
 
   @IsString()
   @IsNotEmpty()

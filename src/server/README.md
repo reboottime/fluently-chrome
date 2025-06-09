@@ -19,9 +19,10 @@ Backend API for Chrome extension that processes voice transcripts and stores lea
 ```javascript
 {
   _id: ObjectId,
-  messageHash: String,      // SHA-256 hash for duplicate detection
-  originalContent: String,  // Raw transcribed voice message
-  improvedMessage: String,  // LLM-enhanced version
+  sessionId: string; // Unique session identifier for AI tutor conversation thread
+  messageHash: String,      // SHA-256 hash based on the textContent
+  textContent: String,  // Raw transcribed voice message
+  suggestedContent: String,  // LLM-enhanced version
   explanation: String,      // LLM explanation of improvements
   status: String,          // "processed" | "user_modified"
   createdAt: Date,
@@ -44,7 +45,7 @@ db.transcripts.createIndex({ "status": 1 })
 
 ## API Endpoints
 
-### 1. Check if Message Exists
+### 1. get the note of a voice transcript
 
 ```http
 GET /transcripts/:messageHash
@@ -55,9 +56,10 @@ GET /transcripts/:messageHash
 ```json
 {
   "_id": "transcript_id",
+  "sessionId": "uuid",
   "messageHash": "hash_value",
-  "originalContent": "original message",
-  "improvedMessage": "improved version",
+  "textContent": "original message",
+  "suggestedContent": "improved version",
   "explanation": "grammar explanation",
   "status": "processed",
   "createdAt": "2025-06-08T10:00:00Z",
@@ -83,9 +85,10 @@ POST /transcripts
 
 ```json
 {
+  "sessionId": "uuid",
   "messageHash": "sha256_hash",
-  "originalContent": "transcribed voice message",
-  "improvedMessage": "LLM improved version",
+  "textContent": "transcribed voice message",
+  "suggestedContent": "LLM improved version",
   "explanation": "LLM explanation of changes",
   "status": "processed"
 }
@@ -96,9 +99,10 @@ POST /transcripts
 ```json
 {
   "_id": "new_transcript_id",
+  "sessionId": "uuid",
   "messageHash": "sha256_hash",
-  "originalContent": "transcribed voice message",
-  "improvedMessage": "LLM improved version",
+  "textContent": "transcribed voice message",
+  "suggestedContent": "LLM improved version",
   "explanation": "LLM explanation of changes",
   "status": "processed",
   "createdAt": "2025-06-08T10:00:00Z",
@@ -116,7 +120,7 @@ PUT /transcripts/:id
 
 ```json
 {
-  "improvedContent": "user edited version",
+  "suggestedContent": "user edited version",
   "explanation": "user's explanation",
   "status": "user_modified"
 }
@@ -151,66 +155,6 @@ Side Panel
 │   LLM Provider  │   Backend API   │
 │   (Direct Call) │   (Persistence) │
 └─────────────────┴─────────────────┘
-```
-
-## Frontend Integration Guide
-
-### 1. Generate Message Hash
-
-```javascript
-const messageHash = crypto.subtle.digest('SHA-256', 
-  new TextEncoder().encode(originalMessage.trim().toLowerCase())
-).then(hashBuffer => 
-  Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-);
-```
-
-### 2. Check for Existing Transcript
-
-```javascript
-const response = await fetch(`/transcripts/${messageHash}`);
-if (response.ok) {
-  const existing = await response.json();
-  // Use existing transcript
-} else {
-  // Proceed with LLM call
-}
-```
-
-### 3. Save New Transcript
-
-```javascript
-const transcript = {
-  messageHash,
-  originalContent: originalMessage,
-  improvedMessage: llmResponse.improved,
-  explanation: llmResponse.explanation,
-  status: 'processed'
-};
-
-await fetch('/transcripts', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(transcript)
-});
-```
-
-### 4. Update Transcript
-
-```javascript
-const updates = {
-  improvedMessage: userEditedMessage,
-  explanation: userExplanation,
-  status: 'user_modified'
-};
-
-await fetch(`/transcripts/${transcriptId}`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(updates)
-});
 ```
 
 ## Error Responses

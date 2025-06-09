@@ -5,7 +5,7 @@ export type TranscriptDocument = Transcript & Document;
 
 @Schema({
   timestamps: true, // Automatically adds createdAt and updatedAt
-  collection: 'transcripts',
+  collection: 'notes',
 })
 export class Transcript {
   @Prop({
@@ -19,10 +19,16 @@ export class Transcript {
   sessionId: string;
 
   @Prop({ required: true })
-  originalContent: string;
+  textContent: string;
+
+  @Prop({ required: false })
+  speaker?: string;
+
+  @Prop({ required: false })
+  duration?: string;
 
   @Prop({ required: true })
-  improvedMessage: string;
+  suggestedContent: string;
 
   @Prop({ required: true })
   explanation: string;
@@ -35,7 +41,9 @@ export class Transcript {
   status: string;
 }
 
-export const TranscriptSchema = SchemaFactory.createForClass(Transcript);
+export const NoteSchema = SchemaFactory.createForClass(Transcript);
 
-TranscriptSchema.index({ createdAt: -1 });
-TranscriptSchema.index({ status: 1 });
+// Indexes
+NoteSchema.index({ createdAt: -1 });
+NoteSchema.index({ status: 1 });
+NoteSchema.index({ sessionId: 1, index: 1 });

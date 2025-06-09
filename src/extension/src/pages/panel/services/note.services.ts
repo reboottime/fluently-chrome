@@ -1,12 +1,6 @@
-import { Note, VoiceMessage } from "@utils/messageUtils";
 import crypto from "crypto";
 
-interface CreateNoteRequest {
-  sessionId: string;
-  textContent: string;
-  index: number;
-  speaker?: string;
-  duration?: string;
+interface CreateNoteRequest extends VoiceMessage {
   suggestedContent: string;
   explanation?: string;
   status?: "processed" | "user_modified";

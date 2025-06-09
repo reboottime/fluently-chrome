@@ -1,9 +1,8 @@
 import { IsString, IsOptional, IsEnum } from 'class-validator';
-
 export class UpdateTranscriptDto {
   @IsString()
   @IsOptional()
-  improvedMessage?: string;
+  suggestedContent?: string;
 
   @IsString()
   @IsOptional()

@@ -1,7 +1,7 @@
-import MessageUtils, { VoiceMessage as IVoiceMessage } from "@src/utils/messageUtils";
+import MessageUtils from "@src/utils/messageUtils";
 import React, { useCallback, useEffect } from "react";
 
-interface VoiceMessage extends IVoiceMessage {
+interface VoiceMessageItem extends VoiceMessage {
   container: HTMLElement
 }
 
@@ -219,7 +219,7 @@ const InjectActionButtons: React.FC = () => {
     [],
   );
 
-  const extractVoiceMessages = useCallback((): VoiceMessage[] => {
+  const extractVoiceMessages = useCallback((): VoiceMessageItem[] => {
     const sessionIdMatch = window.location.href.match(
       /\/session\/([a-f0-9\-]{36})/,
     );
@@ -227,7 +227,7 @@ const InjectActionButtons: React.FC = () => {
 
     const textElements = document.querySelectorAll(SELECTORS.TEXT_ELEMENTS);
 
-    const messages: VoiceMessage[] = [];
+    const messages: VoiceMessageItem[] = [];
 
     textElements.forEach((textElement, index) => {
       const container = textElement.closest(SELECTORS.CONTAINER) as HTMLElement;
@@ -325,7 +325,7 @@ const InjectActionButtons: React.FC = () => {
   );
 
   const createActionButtons = useCallback(
-    (message: VoiceMessage): void => {
+    (message: VoiceMessageItem): void => {
       // Skip if buttons already exist
       if (message.container.querySelector(SELECTORS.EXISTING_BUTTONS)) return;
 
