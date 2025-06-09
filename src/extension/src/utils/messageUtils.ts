@@ -18,6 +18,16 @@ interface VoiceMessage {
     duration?: string;
 }
 
+interface Note extends VoiceMessage {
+    _id: string; // mongodb objectid
+    messageHash: string;
+    suggestedContent: string;
+    explanation: string;
+    createdAt: string;
+    updatedAt: string;
+    status: 'processed' | 'user_modified'
+}
+
 // ===================================
 // MESSAGE CLASS
 // ===================================
@@ -110,4 +120,4 @@ class MessageUtils {
 
 export default MessageUtils;
 export { Message, MESSAGE_ACTIONS };
-export type { MessageData, VoiceMessage };
+export type { MessageData, VoiceMessage, Note };
