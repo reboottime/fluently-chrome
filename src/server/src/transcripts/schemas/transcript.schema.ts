@@ -5,7 +5,8 @@ export type TranscriptDocument = Transcript & Document;
 
 @Schema({
   timestamps: true, // Automatically adds createdAt and updatedAt
-  collection: 'notes',
+  collection: 'transcripts',
+  versionKey: false,
 })
 export class Transcript {
   @Prop({
@@ -30,7 +31,7 @@ export class Transcript {
   @Prop({ required: true })
   suggestedContent: string;
 
-  @Prop({ required: true })
+  @Prop({ required: false })
   explanation: string;
 
   @Prop({
@@ -39,11 +40,17 @@ export class Transcript {
     default: 'processed',
   })
   status: string;
+
+  @Prop({
+    required: false,
+    default: false,
+  })
+  isBookmarked: boolean;
 }
 
-export const NoteSchema = SchemaFactory.createForClass(Transcript);
+export const TranscriptSchema = SchemaFactory.createForClass(Transcript);
 
 // Indexes
-NoteSchema.index({ createdAt: -1 });
-NoteSchema.index({ status: 1 });
-NoteSchema.index({ sessionId: 1, index: 1 });
+TranscriptSchema.index({ createdAt: -1 });
+TranscriptSchema.index({ status: 1 });
+TranscriptSchema.index({ sessionId: 1, index: 1 });

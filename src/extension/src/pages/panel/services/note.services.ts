@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { getStringHash } from "@utils/string";
 
 interface CreateNoteRequest extends VoiceMessage {
   suggestedContent: string;
@@ -17,10 +17,6 @@ interface ApiResponse<T> {
   error?: string;
   message?: string;
 }
-
-const generateMessageHash = (content: string): string => {
-  return crypto.createHash("sha256").update(`${content}`).digest("hex");
-};
 
 class NoteService {
   private baseUrl: string;
@@ -69,9 +65,12 @@ class NoteService {
    * Fetch a note by message hash (generated from transcript VoiceMessage['textContent'])
    * GET /transcripts/{messageHash}
    */
-  async fetchNoteByMessageHash(voiceTranscript: string): Promise<Note | null> {
+  async fetchNoteByMessageHash(
+    voiceMessage: VoiceMessage,
+  ): Promise<Note | null> {
     try {
-      const messageHash = generateMessageHash(voiceTranscript);
+      const messageHash = await getStringHash(voiceMessage.textContent);
+      console.info(messageHash);
 
       const response = await fetch(
         `${this.baseUrl}/transcripts/${messageHash}`,
@@ -108,7 +107,6 @@ class NoteService {
       const payload = {
         ...updateData,
         status: "user_modified",
-        updatedAt: new Date().toISOString(),
       };
 
       const response = await fetch(`${this.baseUrl}/transcripts/${noteId}`, {
@@ -136,19 +134,18 @@ class NoteService {
    * Create a new note
    * POST /transcripts/notes
    */
-  async createNote(notedata: CreateNoteRequest): Promise<Note> {
+  async createNote(noteData: CreateNoteRequest): Promise<Note> {
     try {
-      const messageHash = generateMessageHash(notedata.textContent);
-
-      const payload = {
-        messageHash,
-        status: "processed",
-      };
+      const messageHash = await getStringHash(noteData.textContent);
+      const { index: _i, ...data } = noteData;
 
       const response = await fetch(`${this.baseUrl}/transcripts`, {
         method: "POST",
         headers: this.getHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...data,
+          messageHash,
+        }),
       });
 
       const result = await this.handleResponse<ApiResponse<Note>>(response);
@@ -214,6 +211,6 @@ class NoteService {
 }
 
 // Export singleton instance
-const noteService = new NoteService("");
+const noteService = new NoteService("http://localhost:3000");
 
 export default noteService;

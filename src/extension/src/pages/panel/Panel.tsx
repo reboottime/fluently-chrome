@@ -1,39 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { PencilIcon, CheckIcon } from "lucide-react";
-import MessageUtils, { MESSAGE_ACTIONS } from "@src/utils/messageUtils";
+import { PencilIcon, CheckIcon, X } from "lucide-react";
+
+import MessageUtils, { MESSAGE_ACTIONS } from "@utils/messageUtils";
 import noteService from "./services/note.services";
 
-const XMarkIcon = () => null;
-
-interface VoiceMessage {
-  sessionId: string;
-  textContent: string;
-  index: number;
-  speaker?: string;
-  duration?: string;
-}
-
-interface Note extends VoiceMessage {
-  _id: string; // mongodb objectid
-  suggestedContent: string;
-  explanation: string;
-  createdAt: string;
-  updatedAt: string;
-  status: "processed" | "user_modified";
-}
-
 interface FormData {
-  suggestedContent: string;
-  explanation: string;
+  suggestedContent: Note["suggestedContent"];
+  explanation: Note["explanation"];
 }
 
-interface Props {
-  voiceMessage: VoiceMessage;
-  onSaveNote?: (noteData: Partial<Note>) => Promise<void>;
-}
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center space-x-2">
+    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+    <span className="text-gray-600">Loading...</span>
+  </div>
+);
 
-const ChromeExtensionPanel: React.FC = () => {
+const SavingSpinner = () => (
+  <div className="flex items-center space-x-2">
+    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+    <span className="text-green-600">Saving...</span>
+  </div>
+);
+
+const Panel: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -45,13 +36,15 @@ const ChromeExtensionPanel: React.FC = () => {
     register,
     handleSubmit,
     setValue,
-    watch,
+    clearErrors,
     reset,
     formState: { errors },
   } = useForm<FormData>();
 
+  // read message from background.js
   useEffect(() => {
     setIsLoading(true);
+
     chrome.runtime.onMessage.addListener(async (message) => {
       if (message.action === MESSAGE_ACTIONS.RENDER_VOICE_MESSAGE) {
         setVoiceMessage(message.data);
@@ -66,41 +59,25 @@ const ChromeExtensionPanel: React.FC = () => {
     });
   }, []);
 
-  // Load existing note from server or create initial suggested content
+  // load note for this voice message
   useEffect(() => {
     const loadNote = async (voiceMessage: VoiceMessage | null) => {
       if (!voiceMessage) return;
 
       setIsLoading(true);
+      clearErrors();
+      reset();
+
       try {
-        // Try to fetch existing note for this voice message using message hash
-        const existingNote = await noteService.fetchNoteByMessageHash(
-          voiceMessage.textContent
-        );
+        const existingNote =
+          await noteService.fetchNoteByMessageHash(voiceMessage);
 
         if (existingNote) {
           setNote(existingNote);
           setValue("suggestedContent", existingNote.suggestedContent);
         } else {
           // No existing note, generate suggested content
-          const generateResponse = await chrome.runtime.sendMessage({
-            action: "GENERATE_SUGGESTION",
-            data: { textContent: voiceMessage.textContent },
-          });
-
-          if (generateResponse.success) {
-            const { suggestedContent } = generateResponse.data;
-            setValue("suggestedContent", suggestedContent);
-
-            // Create initial note structure (not saved yet)
-            const initialNote: Partial<Note> = {
-              ...voiceMessage,
-              suggestedContent,
-              explanation: "",
-              status: "processed",
-            };
-            setNote(initialNote as Note);
-          }
+          //request LLM service generating feedback
         }
       } catch (error) {
         console.error("Error loading note:", error);
@@ -111,46 +88,29 @@ const ChromeExtensionPanel: React.FC = () => {
 
     loadNote(voiceMessage);
   }, [voiceMessage, setValue]);
+
   const onSubmit = async (data: FormData) => {
     setIsSaving(true);
+
     try {
       const noteData: Partial<Note> = {
-        ...voiceMessage,
         suggestedContent: data.suggestedContent,
         explanation: data.explanation,
         status: "user_modified",
-        updatedAt: new Date().toISOString(),
       };
 
-      // If note exists, include _id for update
       if (note?._id) {
-        noteData._id = note._id;
+        await noteService.updateNote(note._id, noteData);
       } else {
-        noteData.createdAt = new Date().toISOString();
+        const note = await noteService.createNote({
+          ...voiceMessage,
+          ...noteData,
+        } as Note);
+        setNote(note);
       }
-
-      // Save to database via chrome extension background script
-      const response = await chrome.runtime.sendMessage({
-        action: "SAVE_NOTE",
-        data: noteData,
-      });
-
-      if (response.success) {
-        const savedNote: Note = response.note;
-        setNote(savedNote);
-        setIsEditing(false);
-        reset({ explanation: "" }); // Clear explanation after saving
-
-        // Call parent callback if provided
-        if (onSaveNote) {
-          await onSaveNote(savedNote);
-        }
-      } else {
-        throw new Error(response.error || "Failed to save note");
-      }
+      setIsEditing(false);
     } catch (error) {
       console.error("Error saving note:", error);
-      // You might want to show an error message to the user here
     } finally {
       setIsSaving(false);
     }
@@ -163,26 +123,13 @@ const ChromeExtensionPanel: React.FC = () => {
   const handleCancel = () => {
     if (note) {
       setValue("suggestedContent", note.suggestedContent);
-      reset({ explanation: "" });
+      reset({ explanation: note.explanation });
     }
+    clearErrors();
     setIsEditing(false);
   };
 
-  const LoadingSpinner = () => (
-    <div className="flex items-center justify-center space-x-2">
-      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-      <span className="text-gray-600">Loading...</span>
-    </div>
-  );
-
-  const SavingSpinner = () => (
-    <div className="flex items-center space-x-2">
-      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
-      <span className="text-green-600">Saving...</span>
-    </div>
-  );
-
-  if (isLoading) {
+  if (isLoading || !voiceMessage) {
     return (
       <div className="w-full h-96 bg-white p-6 flex flex-col items-center justify-center">
         <LoadingSpinner />
@@ -203,33 +150,26 @@ const ChromeExtensionPanel: React.FC = () => {
           </h2>
           {note?.status && (
             <span
-              className={`px-2 py-1 text-xs rounded-full ${note.status === "user_modified"
-                ? "bg-blue-200 text-blue-800"
-                : "bg-green-200 text-green-800"
-                }`}
+              className={`px-2 py-1 text-xs rounded-full ${
+                note.status === "user_modified"
+                  ? "bg-blue-200 text-blue-800"
+                  : "bg-green-200 text-green-800"
+              }`}
             >
               {note.status === "user_modified" ? "Modified" : "Processed"}
             </span>
           )}
         </div>
-
-        {/* Voice message metadata */}
-        <div className="mt-2 flex items-center space-x-4 text-xs text-blue-100">
-          {voiceMessage.speaker && <span>Speaker: {voiceMessage.speaker}</span>}
-          {voiceMessage.duration && (
-            <span>Duration: {voiceMessage.duration}</span>
-          )}
-        </div>
       </div>
 
-      <div className="p-4 max-h-80 overflow-y-auto">
+      <div className="p-4">
         {/* Original Content Section */}
         <div className="mb-6">
           <h3 className="text-sm font-medium text-gray-700 mb-2">
             Original Transcript
           </h3>
-          <div className="bg-gray-50 rounded-lg p-3 border">
-            <p className="text-sm text-gray-800 leading-relaxed">
+          <div className="bg-gray-100 rounded-lg p-3 italic">
+            <p className="text-base text-gray-800 leading-relaxed">
               {voiceMessage.textContent}
             </p>
           </div>
@@ -239,12 +179,12 @@ const ChromeExtensionPanel: React.FC = () => {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-700">
-              Suggested Content
+              Revised version:
             </h3>
             {!isEditing && (
               <button
                 onClick={handleEdit}
-                className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm transition-colors"
+                className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm transition-colors cursor-pointer"
                 disabled={isSaving}
               >
                 <PencilIcon className="h-4 w-4" />
@@ -264,10 +204,11 @@ const ChromeExtensionPanel: React.FC = () => {
                   },
                 })}
                 disabled={!isEditing || isSaving}
-                className={`w-full p-3 border rounded-lg text-sm leading-relaxed resize-none transition-colors ${isEditing
-                  ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  : "border-gray-200 bg-gray-50"
-                  } ${errors.suggestedContent ? "border-red-300" : ""}`}
+                className={`w-full p-3 border rounded-lg text-sm leading-relaxed resize-none transition-colors ${
+                  isEditing
+                    ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    : "border-gray-200 bg-gray-50"
+                } ${errors.suggestedContent ? "border-red-300" : ""}`}
                 rows={4}
                 placeholder="Enter suggested content..."
               />
@@ -301,15 +242,15 @@ const ChromeExtensionPanel: React.FC = () => {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-700 disabled:opacity-50 transition-colors"
+                  className="cursor-pointer flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-700 disabled:opacity-50 transition-colors"
                 >
-                  <XMarkIcon className="h-4 w-4" />
+                  <X className="h-4 w-4" />
                   <span>Cancel</span>
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="cursor-pointer flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSaving ? (
                     <SavingSpinner />
@@ -349,4 +290,4 @@ const ChromeExtensionPanel: React.FC = () => {
   );
 };
 
-export default ChromeExtensionPanel;
+export default Panel;

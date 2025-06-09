@@ -1,11 +1,11 @@
 {
-  "name": "vite-web-extension",
+  "name": "fluently-helper",
   "version": "1.4.0",
-  "description": "A simple chrome & firefox extension template with Vite, React, TypeScript and Tailwind CSS.",
+  "description": "A Chrome extension that helps improve your grammar in Fluently AI tutor app. It captures your speech transcripts and provides grammar feedback with corrections and explanations",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/JohnBra/vite-web-extension.git"
+    "url": "https://github.com/reboottime/fluently-helper.git"
   },
   "scripts": {
     "build": "vite build --config vite.config.chrome.ts",
@@ -18,6 +18,7 @@
   "type": "module",
   "dependencies": {
     "@instructor-ai/instructor": "^1.7.0",
+    "lucide-react": "^0.513.0",
     "openai": "^5.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

@@ -1,5 +1,5 @@
-import MessageUtils from "@src/utils/messageUtils";
 import React, { useCallback, useEffect } from "react";
+import MessageUtils from "@utils/messageUtils";
 
 interface VoiceMessageItem extends VoiceMessage {
   container: HTMLElement
@@ -294,7 +294,6 @@ const InjectActionButtons: React.FC = () => {
   const createAddNoteButton = useCallback(
     (message: VoiceMessage): HTMLButtonElement => {
       const handleAddNoteClick = async (e: Event): Promise<void> => {
-        e.stopPropagation();
 
         const button = e.currentTarget as HTMLButtonElement;
         const originalHTML = button.innerHTML;
@@ -304,8 +303,7 @@ const InjectActionButtons: React.FC = () => {
 
         await MessageUtils.requestOpenPanel();
         setTimeout(async () => {
-          const { container, ...voiceMessage } = message;
-          await MessageUtils.sendVoiceMessage(voiceMessage);
+          await MessageUtils.sendVoiceMessage(message);
         }, DELAYS.LOADING);
 
         setTimeout(() => {
@@ -336,8 +334,10 @@ const InjectActionButtons: React.FC = () => {
         parseStyleString(BUTTON_STYLES.CONTAINER),
       );
 
+      const { container, ...voiceMessage } = message;
+
       const copyButton = createCopyButton(message);
-      const addNoteButton = createAddNoteButton(message);
+      const addNoteButton = createAddNoteButton(voiceMessage);
 
       buttonContainer.appendChild(copyButton);
       buttonContainer.appendChild(addNoteButton);
