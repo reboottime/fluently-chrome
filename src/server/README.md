@@ -157,6 +157,10 @@ Side Panel
 └─────────────────┴─────────────────┘
 ```
 
+## Frontend Integration Guide
+
+Please refer to `extension/src/pages/panel/services/note.services.ts`
+
 ## Error Responses
 
 All endpoints return consistent error format:
