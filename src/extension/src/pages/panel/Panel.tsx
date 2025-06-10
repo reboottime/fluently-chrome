@@ -46,6 +46,7 @@ const Panel: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isProcessingGrammar, setIsProcessingGrammar] = useState(false);
 
   const [note, setNote] = useState<Note | null>(null);
   const [voiceMessage, setVoiceMessage] = useState<VoiceMessage | null>(null);
@@ -84,23 +85,34 @@ const Panel: React.FC = () => {
     const loadNote = async (voiceMessage: VoiceMessage | null) => {
       if (!voiceMessage) return;
 
-      setIsLoading(true);
-
       try {
-        const existingNote =
-          await noteService.fetchNoteByMessageHash(voiceMessage);
+        setIsLoading(true);
 
-        if (existingNote) {
-          setNote(existingNote);
-          setValue("suggestedContent", existingNote.suggestedContent);
+        const note = await noteService.fetchNoteByMessageHash(voiceMessage);
+
+        setIsLoading(false);
+
+        if (note) {
+          setNote(note);
+          setValue("suggestedContent", note.suggestedContent);
+          setValue("explanation", note.explanation ?? "no explanation");
+          setIsEditing(false);
         } else {
-          // No existing note, generate suggested content
-          //request LLM service generating feedback
+          setIsProcessingGrammar(true);
+          const feedback = await noteService.correctGrammar(
+            voiceMessage.textContent,
+          );
+          const note = await noteService.createNote({
+            ...voiceMessage,
+            ...feedback,
+          });
+          setNote(note);
+          setValue("explanation", feedback.explanation);
+          setValue("suggestedContent", feedback.suggestedContent);
+          setIsProcessingGrammar(false);
         }
       } catch (error) {
         console.error("Error loading note:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -111,6 +123,7 @@ const Panel: React.FC = () => {
       setIsLoading(false);
       setIsEditing(false);
       setIsSaving(false);
+      setIsProcessingGrammar(false);
       reset();
     };
   }, [voiceMessage?.textContent, setValue, reset, setNote]);
@@ -226,7 +239,7 @@ const Panel: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-700">
               Revised version:
             </h3>
-            {!isEditing && (
+            {!isEditing && !isProcessingGrammar && (
               <button
                 onClick={handleEdit}
                 className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm transition-colors cursor-pointer"
@@ -240,23 +253,26 @@ const Panel: React.FC = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <textarea
-                {...register("suggestedContent", {
-                  required: "Suggested content is required",
-                  minLength: {
-                    value: 10,
-                    message: "Content must be at least 10 characters",
-                  },
-                })}
-                disabled={!isEditing || isSaving}
-                className={`w-full p-3 border rounded-lg text-sm leading-relaxed resize-none transition-colors ${
-                  isEditing
-                    ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    : "border-gray-200 bg-gray-50"
-                } ${errors.suggestedContent ? "border-red-300" : ""}`}
-                rows={4}
-                placeholder="Enter suggested content..."
-              />
+              {isProcessingGrammar && <LoadingSpinner />}
+              {!isProcessingGrammar && (
+                <textarea
+                  {...register("suggestedContent", {
+                    required: "Suggested content is required",
+                    minLength: {
+                      value: 10,
+                      message: "Content must be at least 10 characters",
+                    },
+                  })}
+                  disabled={!isEditing || isSaving}
+                  className={`w-full p-3 border rounded-lg text-sm leading-relaxed resize-none transition-colors ${
+                    isEditing
+                      ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      : "border-gray-200 bg-gray-50"
+                  } ${errors.suggestedContent ? "border-red-300" : ""}`}
+                  rows={4}
+                  placeholder="Enter suggested content..."
+                />
+              )}
               {errors.suggestedContent && (
                 <p className="mt-1 text-sm text-red-600">
                   {errors.suggestedContent.message}
@@ -311,22 +327,13 @@ const Panel: React.FC = () => {
           </form>
         </div>
 
-        {/* Note metadata - show when note exists */}
-        {note?.updatedAt && (
+        {!isEditing && note?.explanation && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="text-xs text-gray-500 space-y-1">
-              <div>Created: {new Date(note.createdAt).toLocaleString()}</div>
-              {note.updatedAt && note.updatedAt !== note.createdAt && (
-                <div>Updated: {new Date(note.updatedAt).toLocaleString()}</div>
-              )}
-              {note.explanation && (
-                <div className="mt-2">
-                  <span className="font-medium">Last explanation:</span>
-                  <div className="bg-gray-50 rounded p-2 mt-1 text-gray-700">
-                    {note.explanation}
-                  </div>
-                </div>
-              )}
+            <div className="mt-2">
+              <span className="font-medium">Last explanation:</span>
+              <div className="bg-gray-50 rounded p-2 mt-1 text-gray-700">
+                {note.explanation}
+              </div>
             </div>
           </div>
         )}
