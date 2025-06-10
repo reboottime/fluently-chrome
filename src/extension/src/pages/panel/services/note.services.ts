@@ -9,7 +9,12 @@ interface CreateNoteRequest extends VoiceMessage {
 interface UpdateNoteRequest {
   suggestedContent?: string;
   explanation?: string;
-  isBookmarked?:boolean;
+  isBookmarked?: boolean;
+}
+
+interface GrammarFeedback {
+  explanation: Note["explanation"];
+  suggestedContent: Note["suggestedContent"];
 }
 
 interface ApiResponse<T> {
@@ -145,6 +150,7 @@ class NoteService {
         headers: this.getHeaders(),
         body: JSON.stringify({
           ...data,
+          status: 'processed',
           messageHash,
         }),
       });
@@ -209,9 +215,33 @@ class NoteService {
       );
     }
   }
+
+  /**
+   * Improve spoken English sentence using Claude AI
+   * POST /grammar/correct/{noteId}
+   */
+  correctGrammar = async (text: string): Promise<GrammarFeedback> => {
+    try {
+      const response = await fetch(`${this.baseUrl}/grammar/correct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      const result =
+        await this.handleResponse<ApiResponse<GrammarFeedback>>(response);
+      if (result.data) return result.data;
+      else throw new Error("Failed to process grammar feedback");
+    } catch (e) {
+      console.error("Error correcting grammar:", e);
+      throw new Error(
+        `Failed to delete note: ${e instanceof Error ? e.message : "Unknown error"}`,
+      );
+    }
+  };
 }
 
 // Export singleton instance
-const noteService = new NoteService("http://localhost:3000");
+const noteService = new NoteService(process.env.VITE_API_BASE_URL ?? 'http://localhost:3000');
 
 export default noteService;
