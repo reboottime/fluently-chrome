@@ -28,7 +28,7 @@ Be concise and direct in your explanations.`;
     const payload = {
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 500,
-      system: systemPrompt, // Move system prompt here as top-level parameter
+      system: systemPrompt,
       messages: [
         {
           role: 'user',

@@ -8,7 +8,7 @@ import { GrammarModule } from './grammar/grammar.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // Makes config available globally
+      isGlobal: true,
     }),
     MongooseModule.forRoot(process.env.MONGODB_URI),
     TranscriptsModule,

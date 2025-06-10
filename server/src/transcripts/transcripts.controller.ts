@@ -10,6 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
+
 import { TranscriptsService } from './transcripts.service';
 import { CreateTranscriptDto } from './dto/create-transcript.dto';
 import { UpdateTranscriptDto } from './dto/update-transcript.dto';
