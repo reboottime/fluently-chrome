@@ -74,13 +74,6 @@ class MessageUtils {
   }
 
   /**
-   * Sends a request to close the side panel
-   */
-  static requestClosePanel(): Promise<void> {
-    return this.sendMessage(MESSAGE_ACTIONS.CLOSE_SIDE_PANEL);
-  }
-
-  /**
    * Sends a message to render a voice note to the panel
    * @param data - The voice message data
    */

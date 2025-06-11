@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { PencilIcon, CheckIcon, X, Bookmark } from "lucide-react";
 
-import MessageUtils, { MESSAGE_ACTIONS } from "@utils/messageUtils";
+import { MESSAGE_ACTIONS } from "@utils/messageUtils";
 import noteService from "./services/note.services";
+import { cn } from "@utils/cn";
 
 interface FormData {
   suggestedContent: Note["suggestedContent"];
@@ -62,8 +63,6 @@ const Panel: React.FC = () => {
 
   // read message from background.js
   useEffect(() => {
-    setIsLoading(true);
-
     chrome.runtime.onMessage.addListener(async (message) => {
       if (message.action === MESSAGE_ACTIONS.RENDER_VOICE_MESSAGE) {
         setVoiceMessage(message.data);
@@ -73,7 +72,6 @@ const Panel: React.FC = () => {
 
     window.addEventListener("beforeunload", async () => {
       setIsLoading(false);
-      await MessageUtils.requestClosePanel();
       setIsLoading(false);
       setVoiceMessage(null);
       setNote(null);
@@ -99,6 +97,7 @@ const Panel: React.FC = () => {
           setIsEditing(false);
         } else {
           setIsProcessingGrammar(true);
+
           const feedback = await noteService.correctGrammar(
             voiceMessage.textContent,
           );
@@ -106,10 +105,13 @@ const Panel: React.FC = () => {
             ...voiceMessage,
             ...feedback,
           });
-          setNote(note);
-          setValue("explanation", feedback.explanation);
-          setValue("suggestedContent", feedback.suggestedContent);
+
           setIsProcessingGrammar(false);
+
+          setNote(note);
+          setValue("explanation", note.explanation);
+          setValue("suggestedContent", note.suggestedContent);
+
         }
       } catch (error) {
         console.error("Error loading note:", error);
@@ -120,15 +122,20 @@ const Panel: React.FC = () => {
 
     return () => {
       setNote(null);
+
       setIsLoading(false);
       setIsEditing(false);
       setIsSaving(false);
       setIsProcessingGrammar(false);
+
       reset();
+      clearErrors();
     };
-  }, [voiceMessage?.textContent, setValue, reset, setNote]);
+  }, [voiceMessage?.textContent, setValue, reset, clearErrors, setNote]);
 
   const onSubmit = async (data: FormData) => {
+    if (!note) return;
+
     setIsSaving(true);
 
     try {
@@ -138,16 +145,9 @@ const Panel: React.FC = () => {
         status: "user_modified",
       };
 
-      if (note?._id) {
-       const newNote = await noteService.updateNote(note._id, noteData);
-       setNote(newNote);
-      } else {
-        const note = await noteService.createNote({
-          ...voiceMessage,
-          ...noteData,
-        } as Note);
-        setNote(note);
-      }
+      const newNote = await noteService.updateNote(note._id, noteData);
+
+      setNote(newNote);
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving note:", error);
@@ -163,6 +163,11 @@ const Panel: React.FC = () => {
   const handleCancel = () => {
     clearErrors();
     setIsEditing(false);
+
+    if (note) {
+      setValue('explanation', note.explanation);
+      setValue('suggestedContent', note.suggestedContent);
+    }
   };
 
   if (isLoading || !voiceMessage) {
@@ -187,11 +192,12 @@ const Panel: React.FC = () => {
           <div className="flex gap-1 items-center">
             {note?.status && (
               <span
-                className={`px-2 py-1 text-xs rounded-full ${
+                className={cn(
+                  "px-2 py-1 text-xs rounded-full",
                   note.status === "user_modified"
                     ? "bg-blue-200 text-blue-800"
                     : "bg-green-200 text-green-800"
-                }`}
+                )}
               >
                 {note.status === "user_modified" ? "Modified" : "Processed"}
               </span>
@@ -250,7 +256,12 @@ const Panel: React.FC = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              {isProcessingGrammar && <LoadingSpinner />}
+              {isProcessingGrammar && <div className="w-full h-96 bg-white p-6 flex flex-col items-center justify-center">
+                <LoadingSpinner />
+                <p className="mt-4 text-gray-500 text-center">
+                  Processing voice message content...
+                </p>
+              </div>}
               {!isProcessingGrammar && (
                 <>
                   {isEditing ? (
@@ -263,11 +274,13 @@ const Panel: React.FC = () => {
                         },
                       })}
                       disabled={!isEditing || isSaving}
-                      className={`w-full p-3 border rounded-lg leading-relaxed text-base   resize-none transition-colors ${
+                      className={cn(
+                        "w-full p-3 border rounded-lg leading-relaxed text-base resize-none transition-colors",
                         isEditing
                           ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          : "border-gray-200 bg-gray-50"
-                      } ${errors.suggestedContent ? "border-red-300" : ""}`}
+                          : "border-gray-200 bg-gray-50",
+                        errors.suggestedContent && "border-red-300"
+                      )}
                       rows={4}
                       placeholder="Enter suggested content..."
                     />

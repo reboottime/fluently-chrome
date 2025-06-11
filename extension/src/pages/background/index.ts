@@ -1,8 +1,6 @@
 import { Message, MESSAGE_ACTIONS } from "@utils/messageUtils";
 
 class Bridge {
-  isSidePanelOpen: boolean = false;
-
   constructor() {
     this.trackPanelStatus();
     this.forwardVoiceMessage();
@@ -17,13 +15,13 @@ class Bridge {
           this.isValidFluentlySession(sender.tab?.url)
         ) {
           try {
+            // Using async/await loses user gesture. 
             this.forceSidePanelOptions(sender.tab?.id);
             chrome.sidePanel.open({ tabId: sender.tab?.id! });
             sendResponse({ success: true });
           } catch (error) {
             sendResponse({ success: false, error: (error as Error)?.message });
           }
-          return true;
         }
       },
     );
