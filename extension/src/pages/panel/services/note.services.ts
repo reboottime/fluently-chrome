@@ -242,6 +242,6 @@ class NoteService {
 }
 
 // Export singleton instance
-const noteService = new NoteService(process.env.VITE_API_BASE_URL ?? 'http://localhost:3000');
+const noteService = new NoteService(import.meta.env.VITE_API_URL);
 
 export default noteService;

@@ -139,7 +139,8 @@ const Panel: React.FC = () => {
       };
 
       if (note?._id) {
-        await noteService.updateNote(note._id, noteData);
+       const newNote = await noteService.updateNote(note._id, noteData);
+       setNote(newNote);
       } else {
         const note = await noteService.createNote({
           ...voiceMessage,
@@ -160,10 +161,6 @@ const Panel: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (note) {
-      setValue("suggestedContent", note.suggestedContent);
-      reset({ explanation: note.explanation });
-    }
     clearErrors();
     setIsEditing(false);
   };
@@ -255,23 +252,34 @@ const Panel: React.FC = () => {
             <div>
               {isProcessingGrammar && <LoadingSpinner />}
               {!isProcessingGrammar && (
-                <textarea
-                  {...register("suggestedContent", {
-                    required: "Suggested content is required",
-                    minLength: {
-                      value: 10,
-                      message: "Content must be at least 10 characters",
-                    },
-                  })}
-                  disabled={!isEditing || isSaving}
-                  className={`w-full p-3 border rounded-lg text-sm leading-relaxed resize-none transition-colors ${
-                    isEditing
-                      ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      : "border-gray-200 bg-gray-50"
-                  } ${errors.suggestedContent ? "border-red-300" : ""}`}
-                  rows={4}
-                  placeholder="Enter suggested content..."
-                />
+                <>
+                  {isEditing ? (
+                    <textarea
+                      {...register("suggestedContent", {
+                        required: "Suggested content is required",
+                        minLength: {
+                          value: 10,
+                          message: "Content must be at least 10 characters",
+                        },
+                      })}
+                      disabled={!isEditing || isSaving}
+                      className={`w-full p-3 border rounded-lg leading-relaxed text-base   resize-none transition-colors ${
+                        isEditing
+                          ? "border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          : "border-gray-200 bg-gray-50"
+                      } ${errors.suggestedContent ? "border-red-300" : ""}`}
+                      rows={4}
+                      placeholder="Enter suggested content..."
+                    />
+                  ) : (
+                    <p
+                      onClick={setIsEditing.bind(null, true)}
+                      className={`w-full p-3 border rounded-lg text-base  leading-relaxed resize-none transition-colors `}
+                    >
+                      {note?.suggestedContent}
+                    </p>
+                  )}
+                </>
               )}
               {errors.suggestedContent && (
                 <p className="mt-1 text-sm text-red-600">

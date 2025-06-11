@@ -1,12 +1,12 @@
 import { Message, MESSAGE_ACTIONS } from "@utils/messageUtils";
 
 class Bridge {
-  currentVoiceMessage: VoiceMessage | null = null;
   isSidePanelOpen: boolean = false;
 
   constructor() {
     this.trackPanelStatus();
-    this.forwardVoiceMesage();
+    this.forwardVoiceMessage();
+    this.trackTabChange();
   }
 
   private trackPanelStatus = () => {
@@ -14,26 +14,22 @@ class Bridge {
       async (message, sender, sendResponse) => {
         if (
           message.action === MESSAGE_ACTIONS.OPEN_SIDE_PANEL &&
-          !this.isSidePanelOpen
+          this.isValidFluentlySession(sender.tab?.url)
         ) {
           try {
-            await this.openPanel(sender);
+            this.forceSidePanelOptions(sender.tab?.id);
+            chrome.sidePanel.open({ tabId: sender.tab?.id! });
             sendResponse({ success: true });
           } catch (error) {
             sendResponse({ success: false, error: (error as Error)?.message });
           }
           return true;
         }
-
-        if (message.action === MESSAGE_ACTIONS.CLOSE_SIDE_PANEL) {
-          this.isSidePanelOpen = false;
-          this.currentVoiceMessage = null;
-        }
       },
     );
   };
 
-  private forwardVoiceMesage = () => {
+  private forwardVoiceMessage = () => {
     chrome.runtime.onMessage.addListener(
       async (message, _sender, sendResponse) => {
         if (message.action === MESSAGE_ACTIONS.SEND_VOICE_MESSAGE) {
@@ -43,7 +39,6 @@ class Bridge {
               message.data,
             );
             await chrome.runtime.sendMessage(forwardedMessage);
-            this.currentVoiceMessage = message.data;
             sendResponse({ success: true });
           } catch (e) {
             sendResponse({ success: false });
@@ -53,12 +48,54 @@ class Bridge {
     );
   };
 
-  private openPanel = async (sender: chrome.runtime.MessageSender) => {
+  private trackTabChange = () => {
+    chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
+      if (!tab.url) return;
+
+      if (this.isValidFluentlySession(tab.url)) {
+        this.forceSidePanelOptions(tab.id!);
+      } else {
+        // Disable the side panel on all other URLs
+        chrome.sidePanel.setOptions({
+          tabId,
+          enabled: false
+        });
+      }
+    });
+
+    // Handle when user switches between tabs
+    chrome.tabs.onActivated.addListener(async (activeInfo) => {
+      const tab = await chrome.tabs.get(activeInfo.tabId);
+
+      if (this.isValidFluentlySession(tab.url)) {
+        this.forceSidePanelOptions(tab.id!);
+      } else {
+        chrome.sidePanel.setOptions({
+          tabId: activeInfo.tabId,
+          enabled: false
+        });
+      }
+    });
+  }
+
+
+  private forceSidePanelOptions = (tabId: number | undefined) => {
+    chrome.sidePanel.setOptions({
+      tabId,
+      path: 'src/pages/panel/index.html',
+      enabled: true
+    });
+  };
+
+  private isValidFluentlySession = (url?: string): boolean => {
+    if (!url) return false;
+
     try {
-      await chrome.sidePanel.open({ windowId: sender?.tab?.windowId! });
-      this.isSidePanelOpen = true;
-    } catch (e) {
-      console.error(e);
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'app.getfluently.app' &&
+        urlObj.pathname.startsWith('/session/');
+    } catch (error) {
+      return false;
     }
   };
 }
